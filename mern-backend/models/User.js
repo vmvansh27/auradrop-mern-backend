@@ -13,5 +13,6 @@ const userSchema = new Schema({
   walletAddress: String, // BEP20 deposit address (derived/assigned)
   kycStatus: { type: String, enum: ['not_started', 'pending', 'approved', 'rejected'], default: 'not_started' },
   otp: { code: String, expiresAt: Date },
+  lastWithdrawalApprovedAt: { type: Date, default: null }, // set when admin approves a withdrawal
 }, { timestamps: true });
 module.exports = model('User', userSchema);

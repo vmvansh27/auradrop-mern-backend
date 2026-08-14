@@ -9,9 +9,12 @@ const KycSubmission = require('../models/KycSubmission');
 const NFT = require('../models/NFT');
 const SocialLink = require('../models/SocialLink');
 const RoadmapItem = require('../models/RoadmapItem');
+const Withdrawal = require('../models/Withdrawal');
 const { getPlatformDepositAddress } = require('../utils/bsc');
 const { syncUserLevel, getSettings } = require('../utils/levels');
 const { settleDueInvestmentsForUser } = require('../utils/investmentSettlement');
+
+const WITHDRAWAL_COOLDOWN_DAYS = 7;
 
 router.get('/me', auth, async (req, res) => {
   await settleDueInvestmentsForUser(req.user._id);
@@ -21,6 +24,17 @@ router.get('/me', auth, async (req, res) => {
   const txs = await Transaction.find({ user: req.user._id }).sort('-createdAt').limit(20);
   const ownedNfts = await NFT.find({ owner: req.user._id }).sort('-updatedAt');
   const platformWalletAddress = await getPlatformDepositAddress();
+
+  // Withdrawal cooldown — compute once here so every refresh() picks it up
+  const cooldownMs = WITHDRAWAL_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+  let nextWithdrawalAt = null;
+  if (freshUser.lastWithdrawalApprovedAt) {
+    const next = new Date(freshUser.lastWithdrawalApprovedAt.getTime() + cooldownMs);
+    if (new Date() < next) nextWithdrawalAt = next.toISOString();
+  }
+  const pendingWithdrawal = await Withdrawal.findOne({ user: freshUser._id, status: 'pending' });
+  const hasPendingWithdrawal = Boolean(pendingWithdrawal);
+
   res.json({
     user: {
       ...freshUser.toObject(),
@@ -39,6 +53,8 @@ router.get('/me', auth, async (req, res) => {
     profit: freshUser.profit,
     referralEarnings: freshUser.referralEarnings,
     investments, transactions: txs, ownedNfts,
+    nextWithdrawalAt,
+    hasPendingWithdrawal,
   });
 });
 
