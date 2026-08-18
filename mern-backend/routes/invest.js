@@ -7,8 +7,18 @@ const Transaction = require('../models/Transaction');
 const { resolveUserLevel, getSettings } = require('../utils/levels');
 const { settleDueInvestmentsForUser } = require('../utils/investmentSettlement');
 
+function getIndiaHour() {
+  return Number(
+    new Intl.DateTimeFormat("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      hour12: false,
+    }).format(new Date())
+  );
+}
+
 function isWindowOpen() {
-  const h = new Date().getHours();
+  const h = getIndiaHour();
   return h < 12 || h >= 17;
 }
 
